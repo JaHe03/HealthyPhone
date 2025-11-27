@@ -1,36 +1,45 @@
 package com.example.healthyphone
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
+import android.os.PowerManager
 
 class HealthyService : Service() {
 
     private lateinit var sensorHandler: SensorHandler
+    private lateinit var notificationHelper: NotificationHelper
+    private lateinit var powerManager: PowerManager
 
     override fun onCreate() {
         super.onCreate()
-        sensorHandler = SensorHandler(this)
+
+        powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        notificationHelper = NotificationHelper(this)
+
+        sensorHandler = SensorHandler(this) { isBadPosture, isTooDark, isWalking ->
+
+            val isScreenOn = powerManager.isInteractive
+
+            notificationHelper.updateNotification(
+                isBadPosture, isTooDark, isWalking, isScreenOn
+            )
+            val intent = Intent("HEALTHY_PHONE_UPDATE")
+            intent.putExtra("walking", isWalking)
+            intent.putExtra("dark", isTooDark)
+            intent.putExtra("posture", isBadPosture)
+            intent.setPackage(packageName)
+            sendBroadcast(intent)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // 1. Create the Notification Channel (Required for Android 8+)
-        createNotificationChannel()
+        val startNotification = notificationHelper.getBaseNotification()
+        val notifId = notificationHelper.getNotificationId()
 
-        // 2. Build the Notification
-        val notification = NotificationCompat.Builder(this, "HEALTHY_CHANNEL_ID")
-            .setContentTitle("HealthyPhone is Active")
-            .setContentText("Monitoring your posture and light levels...")
-            .setSmallIcon(android.R.drawable.ic_menu_compass)
-            .build()
-        startForeground(1, notification)
-
+        startForeground(notifId, startNotification)
         sensorHandler.startListening()
-
         return START_STICKY
     }
 
@@ -41,15 +50,5 @@ class HealthyService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
-    }
-
-    private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            "HEALTHY_CHANNEL_ID",
-            "HealthyPhone Background Service",
-            NotificationManager.IMPORTANCE_LOW
-        )
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(channel)
     }
 }
