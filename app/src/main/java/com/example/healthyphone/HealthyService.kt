@@ -24,6 +24,7 @@ class HealthyService : Service() {
 
             val statusText = when {
                 isWalking && isScreenOn -> "Monitoring: Walking detected..."
+                isBadPosture && isTooDark -> "Monitoring: Bad Posture & Dark Room"
                 isBadPosture -> "Monitoring: Poor Posture detected..."
                 isTooDark -> "Monitoring: Low light detected..."
                 else -> "Monitoring: All Good."
@@ -31,24 +32,32 @@ class HealthyService : Service() {
             notificationHelper.updatePersistentNotification(statusText)
 
             if (alertCode != null && isScreenOn) {
-                when (alertCode) {
-                    "POSTURE_ALERT" -> {
-                        notificationHelper.sendHighPriorityAlert(
-                            "⚠️ Posture Warning",
-                            "You've been slouching for a while. Sit up!"
-                        )
-                    }
-                    "LIGHT_ALERT" -> {
-                        notificationHelper.sendHighPriorityAlert(
-                            "💡 Eye Strain Warning",
-                            "It's been dark for too long. Turn on a light."
-                        )
-                    }
-                    "WALK_ALERT" -> {
-                        notificationHelper.sendHighPriorityAlert(
-                            "🛑 Safety Alert",
-                            "Don't Text and Walk! Look up."
-                        )
+
+                if ((alertCode == "POSTURE_ALERT" || alertCode == "LIGHT_ALERT") && isBadPosture && isTooDark) {
+                    notificationHelper.sendHighPriorityAlert(
+                        "Double Health Warning",
+                        "You have been sitting in low light and slouching for a while. Sit up and turn on a light."
+                    )
+                } else {
+                    when (alertCode) {
+                        "POSTURE_ALERT" -> {
+                            notificationHelper.sendHighPriorityAlert(
+                                "Posture Warning",
+                                "You have been slouching for a while. Sit up!"
+                            )
+                        }
+                        "LIGHT_ALERT" -> {
+                            notificationHelper.sendHighPriorityAlert(
+                                "Eye Strain Warning",
+                                "It has been dark for too long. Turn on a light."
+                            )
+                        }
+                        "WALK_ALERT" -> {
+                            notificationHelper.sendHighPriorityAlert(
+                                "Safety Alert",
+                                "Do not text and walk! Look up."
+                            )
+                        }
                     }
                 }
             }
